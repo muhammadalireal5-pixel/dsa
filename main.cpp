@@ -420,7 +420,9 @@ void UpdateMusic(GameState st) {
     if (!musicInitialized) return;
     if (st == GAMEPLAY) {
         UpdateMusicStream(songs[currentSong]);
-        if (!IsMusicStreamPlaying(songs[currentSong])) {
+        float played = GetMusicTimePlayed(songs[currentSong]);
+        float length = GetMusicTimeLength(songs[currentSong]);
+        if (length > 0.0f && played >= (length - 0.1f)) {
             if (repeatSong) PlayCurrentSong();
             else { currentSong = (currentSong + 1) % songCount; PlayCurrentSong(); }
         }
@@ -528,6 +530,16 @@ void UpdateDrawFrame(void) {
 #endif
         return;
     }
+
+#if defined(PLATFORM_WEB)
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) || GetKeyPressed() != 0) {
+        EM_ASM({
+            if (typeof window.resumeAllAudio === 'function') {
+                window.resumeAllAudio();
+            }
+        });
+    }
+#endif
 
     // Local reference aliases so all existing code using '.' syntax works unchanged
     VideoPlayer& sukunaDomain = *pSukunaDomain;

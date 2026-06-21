@@ -258,25 +258,26 @@
         const contexts = [];
         const OriginalAudioContext = window.AudioContext || window.webkitAudioContext;
         if (OriginalAudioContext) {
-            const ProxyAudioContext = function(...args) {
-                const context = new OriginalAudioContext(...args);
-                contexts.push(context);
-                return context;
-            };
-            ProxyAudioContext.prototype = OriginalAudioContext.prototype;
-            if (window.AudioContext) window.AudioContext = ProxyAudioContext;
-            if (window.webkitAudioContext) window.webkitAudioContext = ProxyAudioContext;
+            class ProxyAudioContext extends OriginalAudioContext {
+                constructor(...args) {
+                    super(...args);
+                    contexts.push(this);
+                }
+            }
+            window.AudioContext = ProxyAudioContext;
+            window.webkitAudioContext = ProxyAudioContext;
         }
 
         function resumeAllAudio() {
             contexts.forEach(ctx => {
                 if (ctx.state === 'suspended') {
                     ctx.resume().then(() => {
-                        console.log("AudioContext resumed on user gesture");
+                        console.log("AudioContext resumed successfully");
                     }).catch(err => console.error("Failed to resume AudioContext:", err));
                 }
             });
         }
+        window.resumeAllAudio = resumeAllAudio;
 
         function focusCanvas() {
             var canvas = document.getElementById('canvas');
