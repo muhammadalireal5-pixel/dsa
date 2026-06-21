@@ -8,7 +8,8 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(raylib REQUIRED)
 
 # 2. Define your executable
-add_executable(gamev2 main.cpp videoPlayer.h)
+add_executable(gamev2 main.cpp videoPlayer.h
+        )
 
 # 3. LINK the library (This is the part you are missing!)
 target_link_libraries(gamev2 PRIVATE raylib)

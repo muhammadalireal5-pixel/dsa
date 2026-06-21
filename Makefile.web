@@ -1,0 +1,72 @@
+# Makefile for compiling Jujutsu Arena to WebAssembly using Emscripten
+
+EMSDK_PREFIX = /Users/muhammadali/emsdk
+FILE_PACKAGER = $(EMSDK_PREFIX)/upstream/emscripten/tools/file_packager.py
+
+# Paths
+RAYLIB_DIR = raylib-web
+RAYLIB_SRC = $(RAYLIB_DIR)/src
+RAYLIB_LIB = $(RAYLIB_SRC)/libraylib.a
+
+# Compiler and Flags
+EMCC = em++
+CFLAGS = -std=c++17 -Os -DPLATFORM_WEB
+INCLUDES = -I. -I$(RAYLIB_SRC)
+LDFLAGS = $(RAYLIB_LIB) -s USE_GLFW=3 -s ASYNCIFY -s INITIAL_MEMORY=268435456 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1
+
+# Output targets
+HTML_OUT = index.html
+JS_OUT = index.js
+WASM_OUT = index.wasm
+
+.PHONY: all clean build-raylib package-assets build-game
+
+all: build-game
+
+# 1. Clone and compile raylib for WebAssembly if not done already
+$(RAYLIB_LIB):
+	@echo "=== Setting up raylib for WebAssembly ==="
+	@if [ ! -d "$(RAYLIB_DIR)" ]; then \
+		git clone --depth 1 -b 5.5 https://github.com/raysan5/raylib.git $(RAYLIB_DIR); \
+	fi
+	@echo "=== Compiling raylib for WebAssembly ==="
+	cd $(RAYLIB_SRC) && emmake make PLATFORM=PLATFORM_WEB -B
+
+build-raylib: $(RAYLIB_LIB)
+
+# 2. Package assets into split packages under 25MB to fit Cloudflare Pages limits
+package-assets:
+	@echo "=== Packaging assets ==="
+	@if [ -z "$(FILE_PACKAGER)" ]; then \
+		echo "Error: file_packager.py not found in $(EMSDK_PREFIX)"; \
+		exit 1; \
+	fi
+	@echo "Using file packager: $(FILE_PACKAGER)"
+	
+	# Package 1: Music (~11MB)
+	python3 $(FILE_PACKAGER) music.data --preload assets/audio/music@assets/audio/music --js-output=music.js --no-node
+	
+	# Package 2: SFX, Voice, and Images (~19.4MB)
+	python3 $(FILE_PACKAGER) sfx_voice_images.data \
+		--preload assets/audio/sfx@assets/audio/sfx \
+		--preload assets/audio/voice@assets/audio/voice \
+		--preload assets/images@assets/images \
+		--js-output=sfx_voice_images.js --no-node
+		
+	# Package 3: Video animations (~16MB)
+	python3 $(FILE_PACKAGER) video.data --preload assets/video@assets/video --js-output=video.js --no-node
+
+# 3. Compile the game to JS and WASM
+build-game: build-raylib package-assets
+	@echo "=== Compiling game.js and game.wasm ==="
+	$(EMCC) main.cpp -o $(JS_OUT) $(INCLUDES) $(CFLAGS) $(LDFLAGS)
+	@echo "=== Build Complete! ==="
+	@echo "To test locally, run: python3 -m http.server 8080"
+	@echo "And open http://localhost:8080 in your browser."
+
+clean:
+	rm -f $(JS_OUT) $(WASM_OUT) *.data music.js sfx_voice_images.js video.js
+	@if [ -d "$(RAYLIB_DIR)" ]; then \
+		echo "Cleaning raylib build..."; \
+		cd $(RAYLIB_SRC) && make clean; \
+	fi

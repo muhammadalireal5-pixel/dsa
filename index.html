@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jujutsu Arena - Web Edition</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0c10;
+            --card-bg: rgba(26, 26, 36, 0.65);
+            --primary: #ff0055;
+            --primary-glow: rgba(255, 0, 85, 0.4);
+            --accent: #00f0ff;
+            --accent-glow: rgba(0, 240, 255, 0.3);
+            --text-main: #f5f5f7;
+            --text-muted: #8e8e93;
+            --border: rgba(255, 255, 255, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(255, 0, 85, 0.05) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(0, 240, 255, 0.05) 0px, transparent 50%);
+            color: var(--text-main);
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1320px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 40px rgba(255, 0, 85, 0.2);
+            margin-bottom: 6px;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            letter-spacing: 0.05em;
+        }
+
+        .game-wrapper {
+            position: relative;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 12px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 
+                        0 0 2px 1px var(--border) inset;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            width: 100%;
+            max-width: 1280px;
+            aspect-ratio: 16/9;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Emscripten Canvas */
+        canvas.emscripten {
+            border: none;
+            background-color: #000;
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            display: block;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+        }
+
+        /* Loading Overlay */
+        #status-overlay {
+            position: absolute;
+            inset: 12px;
+            background-color: #0c0d12;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .loader-card {
+            width: 100%;
+            max-width: 420px;
+            padding: 40px 30px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .loader-logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: 0.15em;
+            color: var(--text-main);
+            position: relative;
+        }
+
+        .loader-logo span {
+            color: var(--primary);
+            text-shadow: 0 0 10px var(--primary);
+        }
+
+        .spinner-ring {
+            width: 70px;
+            height: 70px;
+            border: 3px solid rgba(255, 255, 255, 0.03);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            border-bottom-color: var(--accent);
+            animation: spin 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
+            position: relative;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-container {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            height: 6px;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            box-shadow: 0 0 8px var(--primary-glow);
+            transition: width 0.2s ease;
+        }
+
+        #status-text {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            letter-spacing: 0.05em;
+        }
+
+        footer {
+            margin-top: 10px;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .controls-info {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .key-badge {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            padding: 3px 8px;
+            border-radius: 6px;
+            color: var(--text-main);
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+
+        /* Hide status when finished */
+        .loaded #status-overlay {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Jujutsu Arena</h1>
+        <p class="subtitle">WebAssembly Edition</p>
+    </header>
+
+    <div class="game-wrapper" id="game-container">
+        <!-- Loading overlay -->
+        <div id="status-overlay">
+            <div class="loader-card">
+                <div class="loader-logo">JUJUTSU <span>ARENA</span></div>
+                <div class="spinner-ring"></div>
+                <div class="progress-container">
+                    <div id="progress-bar"></div>
+                </div>
+                <div id="status-text">Initializing game files...</div>
+            </div>
+        </div>
+
+        <!-- The Canvas -->
+        <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+    </div>
+
+    <footer>
+        <div class="controls-info">
+            <span><span>Player 1 (Gojo):</span> <span class="key-badge">A</span> <span class="key-badge">D</span> to Move | <span class="key-badge">F</span> Punch | <span class="key-badge">G</span> Kick | <span class="key-badge">R</span> domain | <span class="key-badge">E</span> heal</span>
+            <span><span>Player 2 (Sukuna):</span> <span class="key-badge">Left</span> <span class="key-badge">Right</span> | <span class="key-badge">K</span> Punch | <span class="key-badge">L</span> Kick | <span class="key-badge">I</span> domain | <span class="key-badge">O</span> summon</span>
+        </div>
+        <div>Built using Raylib, Emscripten, and C++17. Hosted on Cloudflare Pages.</div>
+    </footer>
+</div>
+
+<script>
+    var statusText = document.getElementById('status-text');
+    var progressBar = document.getElementById('progress-bar');
+    var gameContainer = document.getElementById('game-container');
+
+    var Module = {
+        preRun: [],
+        postRun: [],
+        print: (function() {
+            return function(text) {
+                if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+                console.log(text);
+            };
+        })(),
+        canvas: (function() {
+            var canvas = document.getElementById('canvas');
+            // As emscripten suggests, capture keyboard focus on click
+            canvas.addEventListener("click", function() { canvas.focus(); });
+            return canvas;
+        })(),
+        setStatus: function(text) {
+            if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
+            if (text === Module.setStatus.last.text) return;
+            var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+            var now = Date.now();
+            if (m && now - Module.setStatus.last.time < 30) return; // limit updates
+            Module.setStatus.last.time = now;
+            Module.setStatus.last.text = text;
+            if (m) {
+                text = m[1];
+                var loaded = parseInt(m[2]);
+                var total = parseInt(m[4]);
+                var percentage = Math.round((loaded / total) * 100);
+                progressBar.style.width = percentage + '%';
+                statusText.innerHTML = text + ' (' + percentage + '%)';
+            } else {
+                progressBar.style.width = '100%';
+                statusText.innerHTML = text;
+                if (!text) {
+                    // Hide loader overlay once status goes empty (app is running)
+                    gameContainer.classList.add('loaded');
+                    document.getElementById('canvas').focus();
+                }
+            }
+        },
+        totalDependencies: 0,
+        monitorRunDependencies: function(left) {
+            this.totalDependencies = Math.max(this.totalDependencies, left);
+            Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All dependencies loaded! Starting...');
+        }
+    };
+    Module.setStatus('Downloading packages...');
+    window.onerror = function() {
+        Module.setStatus('Exception thrown, see JavaScript console');
+        progressBar.style.background = 'var(--primary)';
+        statusText.style.color = 'var(--primary)';
+    };
+</script>
+
+<!-- Load the custom asset package loaders -->
+<script src="music.js"></script>
+<script src="sfx_voice_images.js"></script>
+<script src="video.js"></script>
+
+<!-- Load the main executable JS -->
+<script async src="index.js"></script>
+
+</body>
+</html>
