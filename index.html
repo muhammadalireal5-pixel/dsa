@@ -253,6 +253,50 @@
 </div>
 
 <script>
+    // --- Bulletproof Audio Autoplay & Canvas Focus Helpers ---
+    (function() {
+        const contexts = [];
+        const OriginalAudioContext = window.AudioContext || window.webkitAudioContext;
+        if (OriginalAudioContext) {
+            const ProxyAudioContext = function(...args) {
+                const context = new OriginalAudioContext(...args);
+                contexts.push(context);
+                return context;
+            };
+            ProxyAudioContext.prototype = OriginalAudioContext.prototype;
+            if (window.AudioContext) window.AudioContext = ProxyAudioContext;
+            if (window.webkitAudioContext) window.webkitAudioContext = ProxyAudioContext;
+        }
+
+        function resumeAllAudio() {
+            contexts.forEach(ctx => {
+                if (ctx.state === 'suspended') {
+                    ctx.resume().then(() => {
+                        console.log("AudioContext resumed on user gesture");
+                    }).catch(err => console.error("Failed to resume AudioContext:", err));
+                }
+            });
+        }
+
+        function focusCanvas() {
+            var canvas = document.getElementById('canvas');
+            if (canvas && document.activeElement !== canvas) {
+                canvas.focus();
+            }
+        }
+
+        function handleUserGesture() {
+            resumeAllAudio();
+            focusCanvas();
+        }
+
+        window.addEventListener('click', handleUserGesture, { passive: true });
+        window.addEventListener('keydown', handleUserGesture, { passive: true });
+        window.addEventListener('mousedown', handleUserGesture, { passive: true });
+        window.addEventListener('touchstart', handleUserGesture, { passive: true });
+    })();
+    // ---------------------------------------------------------
+
     var statusText = document.getElementById('status-text');
     var progressBar = document.getElementById('progress-bar');
     var gameContainer = document.getElementById('game-container');
